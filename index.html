@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>asfcn-autobuild — 上游一发新版，它自己就重建</title>
+<meta name="description" content="ArchiSteamFarm + Caddy 的多架构 Docker 镜像，由 GitHub Actions 自动跟随上游 ASF 稳定版重建。amd64 / arm64 同一地址。">
+<link rel="canonical" href="https://dc1024.github.io/asfcn-autobuild/">
+<meta name="theme-color" content="#06090f">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://dc1024.github.io/asfcn-autobuild/">
+<meta property="og:title" content="asfcn-autobuild — 上游一发新版，它自己就重建">
+<meta property="og:description" content="ArchiSteamFarm + Caddy 的多架构 Docker 镜像，由 GitHub Actions 自动跟随上游 ASF 稳定版重建。amd64 / arm64 同一地址。">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="asfcn-autobuild — 上游一发新版，它自己就重建">
+<meta name="twitter:description" content="ArchiSteamFarm + Caddy 的多架构 Docker 镜像，由 GitHub Actions 自动跟随上游 ASF 稳定版重建。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2306090f'/%3E%3Ccircle cx='16' cy='16' r='7' fill='%2334e3c4'/%3E%3C/svg%3E">
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#06090f;
+    --bg2:#0b1220;
+    --panel:rgba(255,255,255,.028);
+    --line:rgba(255,255,255,.09);
+    --line-strong:rgba(255,255,255,.16);
+    --fg:#e9eff9;
+    --muted:#8ea0ba;
+    --dim:#5f7391;
+    --blue:#4ea8ff;
+    --cyan:#34e3c4;
+    --violet:#8b7dff;
+    --warn:#ffb454;
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;
+  }
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:17px;
+    line-height:1.68;-webkit-font-smoothing:antialiased;overflow-x:hidden;
+  }
+  /* 背景：网格 + 光晕 */
+  body::before{
+    content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+    background-image:linear-gradient(rgba(255,255,255,.032) 1px,transparent 1px),
+                     linear-gradient(90deg,rgba(255,255,255,.032) 1px,transparent 1px);
+    background-size:56px 56px;
+    mask-image:radial-gradient(ellipse 120% 70% at 50% 0%,#000 30%,transparent 78%);
+    -webkit-mask-image:radial-gradient(ellipse 120% 70% at 50% 0%,#000 30%,transparent 78%);
+  }
+  body::after{
+    content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+    background:
+      radial-gradient(680px 380px at 18% -6%,rgba(78,168,255,.20),transparent 62%),
+      radial-gradient(600px 340px at 84% 4%,rgba(52,227,196,.14),transparent 60%),
+      radial-gradient(700px 420px at 50% 108%,rgba(139,125,255,.14),transparent 62%);
+  }
+  .wrap{position:relative;z-index:1;max-width:1320px;margin:0 auto;padding:0 26px}
+
+  /* ---------- nav ---------- */
+  nav{
+    position:sticky;top:0;z-index:20;
+    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    background:rgba(6,9,15,.72);border-bottom:1px solid var(--line);
+  }
+  .nav-in{display:flex;align-items:center;gap:20px;height:70px;max-width:1320px;margin:0 auto;padding:0 26px}
+  .logo{display:flex;align-items:center;gap:9px;font-family:var(--mono);font-size:16.5px;font-weight:600;letter-spacing:-.2px}
+  .logo .dot{width:10px;height:10px;border-radius:50%;background:var(--cyan);box-shadow:0 0 12px var(--cyan)}
+  .logo em{font-style:normal;color:var(--muted);font-weight:400}
+  .nav-links{display:flex;gap:22px;margin-left:auto;font-size:15.5px}
+  .nav-links a{color:var(--muted);text-decoration:none;transition:color .2s}
+  .nav-links a:hover{color:var(--fg)}
+  .gh{
+    display:inline-flex;align-items:center;gap:7px;font-size:15px;font-weight:600;
+    padding:8px 15px;border-radius:10px;border:1px solid var(--line-strong);
+    background:rgba(255,255,255,.05);color:var(--fg);text-decoration:none;white-space:nowrap;
+    transition:background .2s,border-color .2s;
+  }
+  .gh:hover{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.28)}
+
+  /* ---------- hero ---------- */
+  header{padding:84px 0 22px;text-align:center}
+  .pill{
+    display:inline-flex;align-items:center;gap:8px;font-size:14px;font-family:var(--mono);
+    padding:7px 15px;border-radius:999px;border:1px solid rgba(52,227,196,.3);
+    background:rgba(52,227,196,.08);color:var(--cyan);margin-bottom:24px;
+  }
+  .pill .live{width:7px;height:7px;border-radius:50%;background:var(--cyan);animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.8)}}
+  h1{
+    font-size:clamp(28px,6.9vw,82px);line-height:1.06;letter-spacing:-.032em;font-weight:800;
+    text-wrap:balance;margin-bottom:22px;
+  }
+  h1 .g{
+    background:linear-gradient(100deg,var(--blue) 0%,var(--cyan) 48%,var(--violet) 100%);
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+  }
+  .sub{font-size:clamp(17px,2.3vw,23px);color:var(--muted);max-width:860px;margin:0 auto 16px;text-align:left}
+  .sub b{color:var(--fg);font-weight:600;white-space:nowrap}
+  .cta{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin:32px 0 0}
+  .btn{
+    display:inline-flex;align-items:center;gap:10px;padding:15px 26px;border-radius:12px;
+    font-size:16.5px;font-weight:650;text-decoration:none;cursor:pointer;border:1px solid transparent;
+    transition:transform .16s,box-shadow .2s,background .2s;
+  }
+  .btn:hover{transform:translateY(-2px)}
+  .btn.primary{
+    background:linear-gradient(100deg,var(--blue),var(--cyan));color:#04121f;
+    box-shadow:0 10px 30px -10px rgba(78,168,255,.65);
+  }
+  .btn.ghost{background:rgba(255,255,255,.05);border-color:var(--line-strong);color:var(--fg)}
+  .btn.ghost:hover{background:rgba(255,255,255,.1)}
+
+  /* 统计条 */
+  .stats{
+    display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;margin:62px 0 0;
+    background:var(--line);border:1px solid var(--line);border-radius:14px;overflow:hidden;
+  }
+  .stat{background:var(--bg2);padding:24px 18px;text-align:center}
+  .stat .v{font-family:var(--mono);font-size:25px;font-weight:700;color:var(--fg);letter-spacing:-.6px}
+  .stat .v.acc{color:var(--cyan)}
+  .stat .k{font-size:13.5px;color:var(--muted);margin-top:5px;letter-spacing:.3px}
+
+  /* ---------- 通用 section ---------- */
+  section{padding:88px 0}
+  .eyebrow{
+    font-family:var(--mono);font-size:14px;color:var(--blue);letter-spacing:1.4px;
+    text-transform:uppercase;margin-bottom:12px;
+  }
+  h2{font-size:clamp(30px,4vw,44px);letter-spacing:-1.1px;line-height:1.2;margin-bottom:14px;font-weight:750}
+  .lead{color:var(--muted);font-size:18px;max-width:840px;margin-bottom:42px}
+
+  /* 代码块 */
+  .code{
+    position:relative;background:#04070d;border:1px solid var(--line);border-radius:13px;
+    overflow:hidden;font-family:var(--mono);font-size:15px;text-align:left;
+  }
+  .code-top{
+    display:flex;align-items:center;gap:7px;padding:10px 14px;
+    border-bottom:1px solid var(--line);background:rgba(255,255,255,.022);
+  }
+  .code-top .d{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.16)}
+  .code-top .name{margin-left:7px;font-size:13.5px;color:var(--muted)}
+  .copy{
+    margin-left:auto;font-family:var(--sans);font-size:13.5px;font-weight:600;
+    background:rgba(255,255,255,.07);border:1px solid var(--line);color:var(--muted);
+    padding:4px 11px;border-radius:7px;cursor:pointer;transition:.2s;
+  }
+  .copy:hover{background:rgba(255,255,255,.14);color:var(--fg)}
+  .copy.ok{color:var(--cyan);border-color:rgba(52,227,196,.45)}
+  pre{padding:18px 22px;overflow-x:auto;line-height:1.82;color:#c9d7ea}
+  p code,li code,td code{overflow-wrap:anywhere}
+  pre .c{color:#5b6b83}
+  pre .k{color:var(--blue)}
+  pre .s{color:var(--cyan)}
+  pre .w{color:var(--warn)}
+  .hero-code{max-width:720px;margin:38px auto 0}
+
+  /* 问题卡片 */
+  .two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px}
+  .card{
+    background:var(--panel);border:1px solid var(--line);border-radius:17px;padding:28px;
+    transition:border-color .25s,transform .25s;
+  }
+  .card:hover{border-color:var(--line-strong);transform:translateY(-3px)}
+  .card h3{font-size:18px;margin-bottom:9px;display:flex;align-items:center;gap:9px;font-weight:650}
+  .card p{color:var(--muted);font-size:16px}
+  .card.bad{border-left:2px solid rgba(255,120,120,.6)}
+  .card.good{border-left:2px solid var(--cyan)}
+  .tagbad{font-family:var(--mono);font-size:12.5px;padding:2.5px 8px;border-radius:5px;background:rgba(255,120,120,.13);color:#ff9d9d}
+  .taggood{font-family:var(--mono);font-size:12.5px;padding:2.5px 8px;border-radius:5px;background:rgba(52,227,196,.13);color:var(--cyan)}
+  .tag{font-family:var(--mono);font-size:12.5px;padding:2.5px 8px;border-radius:5px;background:rgba(78,168,255,.13);color:var(--blue)}
+
+  /* 流水线 */
+  .flow{position:relative;margin-top:8px}
+  .step{display:grid;grid-template-columns:50px minmax(0,1fr);gap:20px;padding-bottom:30px;position:relative}
+  .step:not(:last-child)::before{
+    content:"";position:absolute;left:25px;top:52px;bottom:0;width:1px;
+    background:linear-gradient(180deg,var(--line-strong),transparent);
+  }
+  .num{
+    width:50px;height:50px;border-radius:13px;display:grid;place-items:center;
+    font-family:var(--mono);font-weight:700;font-size:16px;
+    background:rgba(78,168,255,.1);border:1px solid rgba(78,168,255,.3);color:var(--blue);
+  }
+  .step.acc .num{background:rgba(52,227,196,.1);border-color:rgba(52,227,196,.32);color:var(--cyan)}
+  .step h3{font-size:17.5px;margin:9px 0 5px;font-weight:650}
+  .step p{color:var(--muted);font-size:16px}
+  .step code{font-family:var(--mono);font-size:14.5px;background:rgba(255,255,255,.06);padding:2px 7px;border-radius:5px;color:var(--cyan);overflow-wrap:anywhere}
+
+  /* 特性 */
+  .grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+  .feat{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:26px;transition:.25s}
+  .feat:hover{border-color:var(--line-strong);background:rgba(255,255,255,.045)}
+  .ico{
+    width:40px;height:40px;border-radius:11px;display:grid;place-items:center;margin-bottom:15px;
+    background:rgba(78,168,255,.1);border:1px solid rgba(78,168,255,.24);
+  }
+  .feat h3{font-size:17px;margin-bottom:7px;font-weight:650}
+  .feat p{color:var(--muted);font-size:15.5px}
+
+  /* 注意 */
+  .warn-card{background:rgba(255,180,84,.055);border:1px solid rgba(255,180,84,.22);border-radius:16px;padding:26px}
+  .warn-card h3{font-size:17px;color:var(--warn);margin-bottom:9px;display:flex;align-items:center;gap:8px;font-weight:650}
+  .warn-card p{color:#c6b596;font-size:15.5px}
+  .warn-card code{font-family:var(--mono);font-size:14.5px;background:rgba(255,180,84,.12);padding:2px 6px;border-radius:5px;color:var(--warn)}
+
+  /* 自检清单 */
+  .checks{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;margin-top:30px}
+  .check{
+    display:flex;gap:11px;align-items:flex-start;padding:16px 18px;
+    border:1px solid var(--line);border-radius:11px;background:var(--panel);
+    font-size:15.5px;color:var(--muted);
+  }
+  .check .n{font-family:var(--mono);font-size:13px;color:var(--blue);padding-top:2px;min-width:18px}
+  .check b{color:var(--fg);font-weight:600}
+  .check code{font-family:var(--mono);font-size:14.5px;background:rgba(255,255,255,.06);padding:1.5px 6px;border-radius:5px;color:var(--cyan)}
+
+  /* 链接 */
+  .links{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+  .link{
+    display:block;padding:24px;border:1px solid var(--line);border-radius:15px;
+    background:var(--panel);text-decoration:none;color:inherit;transition:.22s;
+  }
+  .link:hover{border-color:var(--line-strong);background:rgba(255,255,255,.045);transform:translateY(-2px)}
+  .link .t{font-size:16.5px;font-weight:650;margin-bottom:4px}
+  .link .d{font-size:14.5px;color:var(--muted);font-family:var(--mono)}
+
+  footer{border-top:1px solid var(--line);padding:34px 0 46px;text-align:center}
+  footer p{color:var(--muted);font-size:15px}
+  footer a{color:var(--blue);text-decoration:none}
+  footer a:hover{text-decoration:underline}
+
+  /* 入场动画 */
+  .rv{opacity:0;transform:translateY(18px);transition:opacity .6s ease,transform .6s ease}
+  .rv.in{opacity:1;transform:none}
+
+  @media(max-width:1020px){
+    .grid3,.links{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+    .stats{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  }
+  @media(max-width:740px){
+    .two,.grid3,.links,.checks{grid-template-columns:minmax(0,1fr)}
+    .nav-links{display:none}
+    header{padding:60px 0 14px}
+    section{padding:64px 0}
+    h1{font-size:clamp(28px,7vw,50px);letter-spacing:-.02em}
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-in">
+    <div class="logo"><span class="dot"></span>asfcn<em>-autobuild</em></div>
+    <div class="nav-links">
+      <a href="#why">为什么</a>
+      <a href="#how">工作原理</a>
+      <a href="#start">快速开始</a>
+      <a href="#move">换设备</a>
+      <a href="#check">自检</a>
+      <a href="#notes">注意事项</a>
+    </div>
+    <a class="gh" href="https://github.com/DC1024/asfcn-autobuild" target="_blank" rel="noopener">
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+      GitHub
+    </a>
+  </div>
+</nav>
+
+<header class="wrap">
+  <div class="pill"><span class="live"></span>linux/amd64 · linux/arm64 · 稳定版通道</div>
+  <h1>上游一发新版，<span class="g">它自己就重建</span></h1>
+  <p class="sub">
+    <b>asfcn-autobuild</b> 是 ArchiSteamFarm + Caddy（Steam 社区反代）的多架构 Docker 镜像。它不靠容器内自我更新，而是由 GitHub Actions 定时轮询上游稳定版，<b>有新版就自动重建并推送</b>。
+  </p>
+  <div class="cta">
+    <a class="btn primary" href="#start">立刻用起来</a>
+    <a class="btn ghost" href="https://github.com/DC1024/asfcn-autobuild" target="_blank" rel="noopener">查看源码</a>
+  </div>
+
+  <div class="code hero-code">
+    <div class="code-top">
+      <span class="d"></span><span class="d"></span><span class="d"></span>
+      <span class="name">terminal</span>
+      <button class="copy" data-copy="docker pull ghcr.io/dc1024/asfcn-autobuild:latest">复制</button>
+    </div>
+    <pre><span class="c"># 拉取（多架构镜像，amd64 / arm64 同一地址）</span>
+<span class="k">docker</span> pull <span class="s">ghcr.io/dc1024/asfcn-autobuild:latest</span></pre>
+  </div>
+
+  <div class="stats rv">
+    <div class="stat"><div class="v acc">2</div><div class="k">架构 amd64 + arm64</div></div>
+    <div class="stat"><div class="v">2h</div><div class="k">上游轮询间隔</div></div>
+    <div class="stat"><div class="v">stable</div><div class="k">只跟稳定版</div></div>
+    <div class="stat"><div class="v">0</div><div class="k">设备侧需维护脚本</div></div>
+  </div>
+</header>
+
+<section class="wrap" id="why">
+  <div class="eyebrow">design notes</div>
+  <h2>更新交给构建，而不是运行时</h2>
+  <p class="lead">
+    常见做法是让容器里的 ASF 自己更新，运行期再去取新版本。这个镜像换了个位置：<b>把版本更新放到镜像构建阶段</b> —— 基础镜像每次构建都取官方最新稳定版，容器只管跑，不操心升级。对应的取舍是下面四条。
+  </p>
+  <div class="two">
+    <div class="card rv">
+      <h3><span class="tag">构建期</span>版本从哪来</h3>
+      <p>CI 取官方最新稳定版作为基础镜像重建，更新发生在构建阶段，容器启动时就已经是新版。</p>
+    </div>
+    <div class="card rv">
+      <h3><span class="tag">运行时</span>容器不做升级</h3>
+      <p>容器内不跑版本自更新，也就不需要在运行期维护一条对外的更新链路。升级只需拉新镜像。</p>
+    </div>
+    <div class="card good rv">
+      <h3><span class="taggood">收益 1</span>设备侧零维护</h3>
+      <p>不必在每台机器上放升级脚本或定时任务，版本跟进全部在 CI 完成，各设备配置完全一致。</p>
+    </div>
+    <div class="card good rv">
+      <h3><span class="taggood">收益 2</span>依赖面更小</h3>
+      <p>Caddy 只反代 Steam 社区 / 商店 / API，不代理其它站点 —— 需要维护的外部地址更少，也更不容易被外部变动牵连。</p>
+    </div>
+  </div>
+</section>
+
+<section class="wrap" id="how">
+  <div class="eyebrow">how it works</div>
+  <h2>每 2 小时一轮，有新版才动手</h2>
+  <p class="lead">版本守卫让流水线只在「上游确实更新了」时才构建，既不空转消耗额度，也不会漏掉版本。</p>
+  <div class="flow">
+    <div class="step rv">
+      <div class="num">01</div>
+      <div>
+        <h3>定时轮询上游</h3>
+        <p>GitHub Actions 按 <code>schedule</code> 每 2 小时唤醒一次，向 GitHub API 查询 <code>JustArchiNET/ArchiSteamFarm</code> 的最新稳定版 tag。</p>
+      </div>
+    </div>
+    <div class="step rv">
+      <div class="num">02</div>
+      <div>
+        <h3>版本守卫比对</h3>
+        <p>拿上游 tag 和本仓库已有的 git tag <code>asf-&lt;版本&gt;</code> 比对。已经构建过就<b>直接跳过</b>，一次构建都不浪费。</p>
+      </div>
+    </div>
+    <div class="step acc rv">
+      <div class="num">03</div>
+      <div>
+        <h3>多架构构建</h3>
+        <p>确实有新版本时，用 QEMU + buildx 构建 <code>linux/amd64</code> 与 <code>linux/arm64</code> 两套镜像，基础镜像取官方最新稳定版。</p>
+      </div>
+    </div>
+    <div class="step acc rv">
+      <div class="num">04</div>
+      <div>
+        <h3>推送 ghcr 并打标签</h3>
+        <p>推送到 <code>ghcr.io/dc1024/asfcn-autobuild</code>，同时打上 <code>:latest</code> 与 <code>:&lt;ASF版本&gt;</code> 两个标签 —— 需要回滚时钉版本号即可。</p>
+      </div>
+    </div>
+    <div class="step rv">
+      <div class="num">05</div>
+      <div>
+        <h3>记录版本 tag（兼作保活）</h3>
+        <p>构建成功后打 <code>asf-&lt;版本&gt;</code> git tag。它既是下次的守卫依据，也让仓库保持活动状态 —— 规避 GitHub「60 天无活动自动停用 schedule」。</p>
+      </div>
+    </div>
+    <div class="step rv">
+      <div class="num">06</div>
+      <div>
+        <h3>设备侧一条命令跟进</h3>
+        <p>所有设备无需任何脚本或定时任务，需要时跑 <code>docker compose pull &amp;&amp; up -d</code> 即可。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="wrap" id="start">
+  <div class="eyebrow">quick start</div>
+  <h2>丢进 compose 就能跑</h2>
+  <p class="lead">把镜像地址换成下面这行即可。多架构，同一份配置在 x86 与 ARM 设备上通用。</p>
+
+  <div class="code rv">
+    <div class="code-top">
+      <span class="d"></span><span class="d"></span><span class="d"></span>
+      <span class="name">docker-compose.yml</span>
+      <button class="copy" data-copy="services:
+  asf:
+    image: ghcr.io/dc1024/asfcn-autobuild:latest
+    container_name: asf
+    shm_size: 256mb
+    ports:
+      - 1242:1242
+      - 443:443
+    volumes:
+      - ./config:/app/config
+      - ./logs:/app/logs
+      - ./plugins:/app/plugins
+    restart: unless-stopped">复制</button>
+    </div>
+<pre><span class="k">services:</span>
+  <span class="k">asf:</span>
+    <span class="k">image:</span> <span class="s">ghcr.io/dc1024/asfcn-autobuild:latest</span>
+    <span class="k">container_name:</span> asf
+    <span class="k">shm_size:</span> 256mb
+    <span class="k">ports:</span>
+      - <span class="s">1242:1242</span>   <span class="c"># ASF IPC / Web</span>
+      - <span class="s">443:443</span>     <span class="c"># Caddy（Steam 反代）</span>
+    <span class="k">volumes:</span>
+      - <span class="s">./config:/app/config</span>
+      - <span class="s">./logs:/app/logs</span>
+      - <span class="s">./plugins:/app/plugins</span>   <span class="c"># 只放第三方插件</span>
+      <span class="c"># ⚠️ 不要挂载 /asf</span>
+    <span class="k">restart:</span> unless-stopped</pre>
+  </div>
+
+  <div class="code rv" style="margin-top:16px">
+    <div class="code-top">
+      <span class="d"></span><span class="d"></span><span class="d"></span>
+      <span class="name">升级（所有设备同一条命令）</span>
+      <button class="copy" data-copy="docker compose pull && docker compose up -d">复制</button>
+    </div>
+<pre><span class="k">docker</span> compose pull <span class="c">&amp;&amp;</span> <span class="k">docker</span> compose up -d</pre>
+  </div>
+</section>
+
+<section class="wrap" id="move">
+  <div class="eyebrow">migrate</div>
+  <h2>换设备，只搬一个 config 目录</h2>
+  <p class="lead">
+    <code>logs/</code> 与 <code>plugins/</code> 里没有账号状态，用不着搬。但 config 里有个容易忽略的细节，它决定新机要不要重新登录。
+  </p>
+  <div class="two">
+    <div class="card good rv">
+      <h3><span class="taggood">要这样</span>bot.json + bot.db 一起搬</h3>
+      <p><code>bot.db</code> 里存着登录令牌。两个文件一起搬过去，ASF 在新机上<b>直接登录，不必重新验证</b>。</p>
+    </div>
+    <div class="card bad rv">
+      <h3><span class="tagbad">别这样</span>只搬 bot.json</h3>
+      <p>少了 <code>.db</code>，ASF 会重新走一遍登录，可能触发 Steam Guard / 邮件令牌，甚至要重新过 2FA。</p>
+    </div>
+  </div>
+  <div class="code rv" style="margin-top:24px">
+    <div class="code-top">
+      <span class="d"></span><span class="d"></span><span class="d"></span>
+      <span class="name">迁移：旧机打包 → 新机解包</span>
+      <button class="copy" data-copy="# 旧机：停容器，只打包 config
+docker compose stop
+tar -czf asf-config-$(date +%F).tar.gz -C /path/to/asf config
+
+# 新机：解包后直接起
+tar -xzf asf-config-*.tar.gz -C /path/to/asf
+docker compose up -d">复制</button>
+    </div>
+<pre><span class="c"># 旧机：停容器，只打包 config</span>
+<span class="k">docker</span> compose stop
+<span class="k">tar</span> -czf asf-config-<span class="s">$(date +%F)</span>.tar.gz -C /path/to/asf config
+
+<span class="c"># 新机：解包后直接起</span>
+<span class="k">tar</span> -xzf asf-config-*.tar.gz -C /path/to/asf
+<span class="k">docker</span> compose up -d</pre>
+  </div>
+  <p class="lead" style="margin:22px 0 0;font-size:14px">搬完在新机跑一次 <code>verify.sh</code>（下一节），确认 bot 已登录、反代通、没有重复插件报错。</p>
+</section>
+
+<section class="wrap" id="check">
+  <div class="eyebrow">self check</div>
+  <h2>一分钟自检</h2>
+  <p class="lead">
+    仓库自带 <code>verify.sh</code>。在装了 docker 的宿主机、于 compose 文件所在目录执行，一条命令跑完 9 项，给出 PASS / FAIL 与退出码。
+  </p>
+  <div class="code rv" style="max-width:560px">
+    <div class="code-top">
+      <span class="d"></span><span class="d"></span><span class="d"></span>
+      <span class="name">terminal</span>
+      <button class="copy" data-copy="bash verify.sh">复制</button>
+    </div>
+<pre><span class="k">bash</span> verify.sh
+<span class="c"># 需要 sudo 的机器：</span>
+<span class="k">DOCKER</span>=<span class="s">"sudo docker"</span> bash verify.sh</pre>
+  </div>
+  <div class="checks rv">
+    <div class="check"><span class="n">01</span><div>容器健康（running / healthy）</div></div>
+    <div class="check"><span class="n">02</span><div>镜像地址是新的，并报出本次启动的 ASF 版本</div></div>
+    <div class="check"><span class="n">03</span><div>有没有误挂 <code>/asf</code></div></div>
+    <div class="check"><span class="n">04</span><div>生效的 Caddyfile 是否健全：缺 <code>header_up Host</code>，或还留着 github 反代，都会报</div></div>
+    <div class="check"><span class="n">05</span><div>插件有没有被重复放置</div></div>
+    <div class="check"><span class="n">06</span><div>本次启动的 ERROR 数（按 boot 分口径）</div></div>
+    <div class="check"><span class="n">07</span><div>bot 是否登录并开始挂卡</div></div>
+    <div class="check"><span class="n">08</span><div>Steam 三个域名能否经反代连通</div></div>
+    <div class="check"><span class="n">09</span><div>IPC 接口能否鉴权</div></div>
+  </div>
+  <p class="lead" style="margin:22px 0 0;font-size:14px">
+    退出码 <code>0</code> = 全过，<code>1</code> = 有未通过项 —— 方便接进你自己的巡检脚本。顺带一个容易踩的点：ASF 的 IPC 用 <code>Authentication</code> 请求头鉴权（值就是 IPCPassword），<b>不是 HTTP Basic</b>，用 <code>curl -u</code> 会稳定拿到 401。
+  </p>
+</section>
+
+<section class="wrap">
+  <div class="eyebrow">features</div>
+  <h2>为多设备、弱网络环境做的取舍</h2>
+  <div class="grid3" style="margin-top:34px">
+    <div class="feat rv">
+      <div class="ico"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#4ea8ff" stroke-width="2" stroke-linecap="round"><path d="M12 3v18M3 12h18"/><circle cx="12" cy="12" r="9"/></svg></div>
+      <h3>自动构建</h3>
+      <p>核心特色。CI 定时轮询上游稳定版，有新版自动重建，滞后上界就是轮询间隔。</p>
+    </div>
+    <div class="feat rv">
+      <div class="ico"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#34e3c4" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div>
+      <h3>多架构</h3>
+      <p>linux/amd64 与 linux/arm64 同一镜像地址，NAS、小主机、ARM 盒子共用一份配置。</p>
+    </div>
+    <div class="feat rv">
+      <div class="ico"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#8b7dff" stroke-width="2" stroke-linecap="round"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg></div>
+      <h3>版本守卫</h3>
+      <p>没有新版本就不构建，省下 CI 额度；同时用 git tag 保活，schedule 不会被自动停用。</p>
+    </div>
+    <div class="feat rv">
+      <div class="ico"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#4ea8ff" stroke-width="2" stroke-linecap="round"><path d="M4 17l6-6-6-6M12 19h8"/></svg></div>
+      <h3>Steam 反代</h3>
+      <p>保留原项目的 Steam 社区反代，并补上 <b>header_up Host</b> 以适配 Akamai 的 Host 校验，避免 bot 反复断连。</p>
+    </div>
+    <div class="feat rv">
+      <div class="ico"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#34e3c4" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg></div>
+      <h3>只跟稳定版</h3>
+      <p>不追预发布，避免测试版带来的意外。对月更的稳定版而言，等于发布即跟进。</p>
+    </div>
+    <div class="feat rv">
+      <div class="ico"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#8b7dff" stroke-width="2" stroke-linecap="round"><path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z"/></svg></div>
+      <h3>零设备侧维护</h3>
+      <p>不需要在每台机器上放脚本、定时任务或更新逻辑，配置完全一致。</p>
+    </div>
+  </div>
+</section>
+
+<section class="wrap" id="notes">
+  <div class="eyebrow">notes</div>
+  <h2>四个容易踩的坑</h2>
+  <div class="two" style="margin-top:34px">
+    <div class="warn-card rv">
+      <h3>⚠️ 别沿用老教程的 Caddyfile</h3>
+      <p>老教程挂载的那份除了 Steam 反代，还带着三段 <code>github.com</code> / <code>github.io</code> / <code>raw.githubusercontent.com</code> 反代，本镜像不依赖它（版本走镜像层）。而且挂载的宿主文件会<b>完全盖住</b>镜像内置版本 —— 想改反代就改内置那份，或干脆不挂。</p>
+    </div>
+    <div class="warn-card rv">
+      <h3>⚠️ 别挂载 /asf</h3>
+      <p>宿主目录挂到 <code>/asf</code> 会盖住镜像里的新程序 —— 结果是「拉了新镜像也不更新」。旧配置里的这条挂载要删掉。</p>
+    </div>
+    <div class="warn-card rv">
+      <h3>⚠️ plugins 卷只放第三方插件</h3>
+      <p>官方插件镜像内自带。放重复副本会让 ASF 两个目录都扫，启动刷几百行重复报错（功能无损，但很吵）。</p>
+    </div>
+    <div class="warn-card rv">
+      <h3>⚠️ ghcr 在海外</h3>
+      <p><code>ghcr.io</code> 国内多数线路可直连，但非绝对。若设备拉不动，配置 HTTP 代理，或改用国内镜像仓库地址。</p>
+    </div>
+  </div>
+</section>
+
+<section class="wrap">
+  <div class="eyebrow">links</div>
+  <h2>相关链接</h2>
+  <div class="links" style="margin-top:34px">
+    <a class="link" href="https://github.com/DC1024/asfcn-autobuild" target="_blank" rel="noopener">
+      <div class="t">本仓库 ↗</div>
+      <div class="d">DC1024/asfcn-autobuild</div>
+    </a>
+    <a class="link" href="https://github.com/JustArchiNET/ArchiSteamFarm" target="_blank" rel="noopener">
+      <div class="t">ArchiSteamFarm ↗</div>
+      <div class="d">JustArchiNET/ArchiSteamFarm</div>
+    </a>
+    <a class="link" href="https://github.com/sffxzzp/ASFcn" target="_blank" rel="noopener">
+      <div class="t">上游 ASFcn ↗</div>
+      <div class="d">sffxzzp/ASFcn</div>
+    </a>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <p>
+      <b>asfcn-autobuild</b> · Apache-2.0 生态 ·
+      衍生于 <a href="https://github.com/sffxzzp/ASFcn" target="_blank" rel="noopener">sffxzzp/ASFcn</a>，基于 <a href="https://github.com/JustArchiNET/ArchiSteamFarm" target="_blank" rel="noopener">ArchiSteamFarm</a> 与 <a href="https://caddyserver.com/" target="_blank" rel="noopener">Caddy</a>。
+    </p>
+    <p style="margin-top:10px;font-size:12px;color:#5f7391">
+      镜像：<span style="font-family:var(--mono)">ghcr.io/dc1024/asfcn-autobuild:latest</span>
+    </p>
+  </div>
+</footer>
+
+<script>
+  // 复制按钮
+  document.querySelectorAll('.copy').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var txt = b.getAttribute('data-copy') || '';
+      var done = function () {
+        var old = b.textContent;
+        b.textContent = '已复制';
+        b.classList.add('ok');
+        setTimeout(function () { b.textContent = old; b.classList.remove('ok'); }, 1600);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(txt).then(done, function () { fallback(txt, done); });
+      } else {
+        fallback(txt, done);
+      }
+    });
+  });
+  function fallback(txt, cb) {
+    var ta = document.createElement('textarea');
+    ta.value = txt;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); cb(); } catch (e) {}
+    document.body.removeChild(ta);
+  }
+
+  // 滚动入场
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function (es) {
+      es.forEach(function (e) {
+        if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+      });
+    }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+    document.querySelectorAll('.rv').forEach(function (el) { io.observe(el); });
+  } else {
+    document.querySelectorAll('.rv').forEach(function (el) { el.classList.add('in'); });
+  }
+</script>
+</body>
+</html>
