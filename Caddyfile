@@ -1,0 +1,43 @@
+# ASFcn (self-maintained fork) — Caddyfile
+# 仅保留 Steam 社区/商店/API 反代（绕过 SNI 阻断）。已移除 github.com 反代（硬编码 IP 易失效 → 502）。
+# 关键修复：(rev) 段设置 `header_up Host {host}`，否则 Caddy 用上游 edgesuite 域名做 Host 头，
+#           Akamai 会返回 400，导致 ASF 的 bot 反复 Disconnected。
+
+{
+	local_certs
+	ocsp_stapling off
+	pki {
+		ca {
+			# 仅 Caddy v2.6.3+ 支持
+			intermediate_lifetime 1800d
+		}
+	}
+}
+
+(sign) {
+	tls {
+		issuer internal {
+			# 超过 1 年可能引发问题
+			lifetime 360d
+		}
+	}
+}
+
+(rev) {
+	lb_policy round_robin
+	transport http {
+		tls
+		tls_insecure_skip_verify
+	}
+	header_up Host {host}
+}
+
+# Steam 社区 / 商店 / API → Akamai edgesuite 反代（绕过 SNI 阻断）
+https://steamcommunity.com, https://www.steamcommunity.com, https://cdn.steamcommunity.com, https://store.steampowered.com, https://api.steampowered.com {
+	import sign
+	reverse_proxy * https://steamuserimages-a.akamaihd.net.edgesuite.net https://steamstore-a.akamaihd.net.edgesuite.net https://eaassets-a.akamaihd.net.edgesuite.net https://steamcommunity-a.akamaihd.net.edgesuite.net {
+		import rev
+		fail_duration 10s
+		health_timeout 30s
+	}
+}

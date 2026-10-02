@@ -1,0 +1,106 @@
+name: build-and-push
+
+# 触发策略：定时轮询 + 版本守卫（追得上 ASF 发布，又不空转）
+#  - push：仅在构建相关文件变化时（首次/改动即重建）
+#  - schedule：每 2 小时轮询一次；仅当上游 ASF 稳定版 tag 未被我们构建过时才真正构建
+#  - workflow_dispatch：手动
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Dockerfile'
+      - 'entrypoint.sh'
+      - 'Caddyfile'
+      - '.github/workflows/docker.yml'
+  schedule:
+    - cron: '0 */2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write    # 需要打/推 git tag（版本守卫 + 保活 schedule）
+  packages: write    # 推送 ghcr 镜像
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # 需要读取全部 git tag
+
+      - name: 解析上游 ASF 稳定版版本
+        id: ver
+        run: |
+          set -eu
+          TAG=$(curl -sSfL https://api.github.com/repos/JustArchiNET/ArchiSteamFarm/releases/latest \
+                | python3 -c "import sys,json;print(json.load(sys.stdin)['tag_name'])")
+          echo "asf=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Upstream ASF stable: $TAG"
+
+      - name: 计算镜像名（全小写）
+        id: img
+        run: |
+          set -eu
+          OWNER=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')
+          echo "image=ghcr.io/${OWNER}/asfcn" >> "$GITHUB_OUTPUT"
+
+      - name: 版本守卫（决定是否构建）
+        id: decide
+        run: |
+          set -eu
+          EXISTS="no"
+          if git rev-parse -q --verify "refs/tags/asf-${{ steps.ver.outputs.asf }}" >/dev/null; then EXISTS="yes"; fi
+          echo "tag asf-${{ steps.ver.outputs.asf }} exists: $EXISTS"
+          if [ "${{ github.event_name }}" = "schedule" ] && [ "$EXISTS" = "yes" ]; then
+            echo "build=false" >> "$GITHUB_OUTPUT"
+            echo "已构建过 asf-${{ steps.ver.outputs.asf }}，跳过。"
+          else
+            echo "build=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up QEMU
+        if: steps.decide.outputs.build == 'true'
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Buildx
+        if: steps.decide.outputs.build == 'true'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        if: steps.decide.outputs.build == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push (linux/amd64, linux/arm64)
+        if: steps.decide.outputs.build == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ${{ steps.img.outputs.image }}:latest
+            ${{ steps.img.outputs.image }}:${{ steps.ver.outputs.asf }}
+          labels: |
+            org.opencontainers.image.version=${{ steps.ver.outputs.asf }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.source=https://github.com/DC1024/asfcn
+
+      - name: 记录已构建版本 tag
+        if: steps.decide.outputs.build == 'true'
+        run: |
+          set -eu
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if ! git rev-parse -q --verify "refs/tags/asf-${{ steps.ver.outputs.asf }}" >/dev/null; then
+            git tag "asf-${{ steps.ver.outputs.asf }}"
+            git push origin "asf-${{ steps.ver.outputs.asf }}"
+          fi
