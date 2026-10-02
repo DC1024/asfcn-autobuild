@@ -87,8 +87,8 @@
   .pill .live{width:7px;height:7px;border-radius:50%;background:var(--cyan);animation:pulse 2s infinite}
   @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.8)}}
   h1{
-    font-size:clamp(44px,7.6vw,82px);line-height:1.06;letter-spacing:-2.4px;font-weight:800;
-    margin-bottom:22px;
+    font-size:clamp(28px,6.9vw,82px);line-height:1.06;letter-spacing:-.032em;font-weight:800;
+    text-wrap:balance;margin-bottom:22px;
   }
   h1 .g{
     background:linear-gradient(100deg,var(--blue) 0%,var(--cyan) 48%,var(--violet) 100%);
@@ -112,7 +112,7 @@
 
   /* 统计条 */
   .stats{
-    display:grid;grid-template-columns:repeat(4,1fr);gap:1px;margin:62px 0 0;
+    display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;margin:62px 0 0;
     background:var(--line);border:1px solid var(--line);border-radius:14px;overflow:hidden;
   }
   .stat{background:var(--bg2);padding:24px 18px;text-align:center}
@@ -148,6 +148,7 @@
   .copy:hover{background:rgba(255,255,255,.14);color:var(--fg)}
   .copy.ok{color:var(--cyan);border-color:rgba(52,227,196,.45)}
   pre{padding:18px 22px;overflow-x:auto;line-height:1.82;color:#c9d7ea}
+  p code,li code,td code{overflow-wrap:anywhere}
   pre .c{color:#5b6b83}
   pre .k{color:var(--blue)}
   pre .s{color:var(--cyan)}
@@ -155,7 +156,7 @@
   .hero-code{max-width:720px;margin:38px auto 0}
 
   /* 问题卡片 */
-  .two{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  .two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px}
   .card{
     background:var(--panel);border:1px solid var(--line);border-radius:17px;padding:28px;
     transition:border-color .25s,transform .25s;
@@ -167,10 +168,11 @@
   .card.good{border-left:2px solid var(--cyan)}
   .tagbad{font-family:var(--mono);font-size:12.5px;padding:2.5px 8px;border-radius:5px;background:rgba(255,120,120,.13);color:#ff9d9d}
   .taggood{font-family:var(--mono);font-size:12.5px;padding:2.5px 8px;border-radius:5px;background:rgba(52,227,196,.13);color:var(--cyan)}
+  .tag{font-family:var(--mono);font-size:12.5px;padding:2.5px 8px;border-radius:5px;background:rgba(78,168,255,.13);color:var(--blue)}
 
   /* 流水线 */
   .flow{position:relative;margin-top:8px}
-  .step{display:grid;grid-template-columns:50px 1fr;gap:20px;padding-bottom:30px;position:relative}
+  .step{display:grid;grid-template-columns:50px minmax(0,1fr);gap:20px;padding-bottom:30px;position:relative}
   .step:not(:last-child)::before{
     content:"";position:absolute;left:25px;top:52px;bottom:0;width:1px;
     background:linear-gradient(180deg,var(--line-strong),transparent);
@@ -183,10 +185,10 @@
   .step.acc .num{background:rgba(52,227,196,.1);border-color:rgba(52,227,196,.32);color:var(--cyan)}
   .step h3{font-size:17.5px;margin:9px 0 5px;font-weight:650}
   .step p{color:var(--muted);font-size:16px}
-  .step code{font-family:var(--mono);font-size:14.5px;background:rgba(255,255,255,.06);padding:2px 7px;border-radius:5px;color:var(--cyan)}
+  .step code{font-family:var(--mono);font-size:14.5px;background:rgba(255,255,255,.06);padding:2px 7px;border-radius:5px;color:var(--cyan);overflow-wrap:anywhere}
 
   /* 特性 */
-  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
   .feat{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:26px;transition:.25s}
   .feat:hover{border-color:var(--line-strong);background:rgba(255,255,255,.045)}
   .ico{
@@ -203,7 +205,7 @@
   .warn-card code{font-family:var(--mono);font-size:14.5px;background:rgba(255,180,84,.12);padding:2px 6px;border-radius:5px;color:var(--warn)}
 
   /* 自检清单 */
-  .checks{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:30px}
+  .checks{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;margin-top:30px}
   .check{
     display:flex;gap:11px;align-items:flex-start;padding:16px 18px;
     border:1px solid var(--line);border-radius:11px;background:var(--panel);
@@ -214,7 +216,7 @@
   .check code{font-family:var(--mono);font-size:14.5px;background:rgba(255,255,255,.06);padding:1.5px 6px;border-radius:5px;color:var(--cyan)}
 
   /* 链接 */
-  .links{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .links{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
   .link{
     display:block;padding:24px;border:1px solid var(--line);border-radius:15px;
     background:var(--panel);text-decoration:none;color:inherit;transition:.22s;
@@ -233,15 +235,15 @@
   .rv.in{opacity:1;transform:none}
 
   @media(max-width:1020px){
-    .grid3,.links{grid-template-columns:1fr 1fr}
-    .stats{grid-template-columns:1fr 1fr}
+    .grid3,.links{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+    .stats{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
   }
   @media(max-width:740px){
-    .two,.grid3,.links,.checks{grid-template-columns:1fr}
+    .two,.grid3,.links,.checks{grid-template-columns:minmax(0,1fr)}
     .nav-links{display:none}
     header{padding:60px 0 14px}
     section{padding:64px 0}
-    h1{letter-spacing:-1.4px}
+    h1{font-size:clamp(28px,7vw,50px);letter-spacing:-.02em}
   }
 </style>
 </head>
@@ -267,7 +269,7 @@
 
 <header class="wrap">
   <div class="pill"><span class="live"></span>linux/amd64 · linux/arm64 · 稳定版通道</div>
-  <h1>上游一发新版，<br><span class="g">它自己就重建</span></h1>
+  <h1>上游一发新版，<span class="g">它自己就重建</span></h1>
   <p class="sub">
     <b>asfcn-autobuild</b> 是 ArchiSteamFarm + Caddy（Steam 社区反代）的多架构 Docker 镜像。
     它不靠容器内自我更新，而是由 GitHub Actions 定时轮询上游稳定版，
@@ -297,28 +299,29 @@
 </header>
 
 <section class="wrap" id="why">
-  <div class="eyebrow">the problem</div>
-  <h2>原版 ASFcn 停更了，而且它的自更新是坏的</h2>
+  <div class="eyebrow">design notes</div>
+  <h2>更新交给构建，而不是运行时</h2>
   <p class="lead">
-    sffxzzp/ASFcn 是个很实用的项目，但它依赖维护者手动触发构建；镜像停在几个月前的版本。
-    更麻烦的是，即使你手动拉新镜像，容器内的 ASF 也<b>永远更新不了</b>。
+    常见做法是让容器里的 ASF 自己更新，运行期再去取新版本。这个镜像换了个位置：
+    <b>把版本更新放到镜像构建阶段</b> —— 基础镜像每次构建都取官方最新稳定版，
+    容器只管跑，不操心升级。对应的取舍是下面四条。
   </p>
   <div class="two">
-    <div class="card bad rv">
-      <h3><span class="tagbad">问题 1</span>镜像层停更</h3>
-      <p>上游 CI 只有 push / 手动触发，没有定时任务。维护者不动手，镜像就一直停在旧版本 —— 实测滞后已达数月。</p>
+    <div class="card rv">
+      <h3><span class="tag">构建期</span>版本从哪来</h3>
+      <p>CI 取官方最新稳定版作为基础镜像重建，更新发生在构建阶段，容器启动时就已经是新版。</p>
     </div>
-    <div class="card bad rv">
-      <h3><span class="tagbad">问题 2</span>容器内自更新永远失败</h3>
-      <p>原版 entrypoint 把 <code>github.com</code> 指向本地 Caddy，而 Caddyfile 里写着<b>硬编码的 GitHub IP</b>。这些 IP 会失效，反代返回 502，ASF 拿不到新版，于是「已是最新」的误判一直存在。</p>
-    </div>
-    <div class="card good rv">
-      <h3><span class="taggood">解法 1</span>把更新搬到 CI</h3>
-      <p>既然容器内更新不可靠，就换思路：<b>由 CI 重建镜像</b>。基础镜像每次构建都取官方最新稳定版，更新发生在构建阶段，而不是运行阶段。</p>
+    <div class="card rv">
+      <h3><span class="tag">运行时</span>容器不做升级</h3>
+      <p>容器内不跑版本自更新，也就不需要在运行期维护一条对外的更新链路。升级只需拉新镜像。</p>
     </div>
     <div class="card good rv">
-      <h3><span class="taggood">解法 2</span>砍掉没用的反代</h3>
-      <p>既然不再需要容器内自更新，整段 <code>github.com</code> 反代直接移除 —— 502 的根因随之消失，也不再有过期 IP 的隐患。</p>
+      <h3><span class="taggood">收益 1</span>设备侧零维护</h3>
+      <p>不必在每台机器上放升级脚本或定时任务，版本跟进全部在 CI 完成，各设备配置完全一致。</p>
+    </div>
+    <div class="card good rv">
+      <h3><span class="taggood">收益 2</span>依赖面更小</h3>
+      <p>Caddy 只反代 Steam 社区 / 商店 / API，不代理其它站点 —— 需要维护的外部地址更少，也更不容易被外部变动牵连。</p>
     </div>
   </div>
 </section>
@@ -514,8 +517,8 @@ docker compose up -d">复制</button>
     </div>
     <div class="feat rv">
       <div class="ico"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#4ea8ff" stroke-width="2" stroke-linecap="round"><path d="M4 17l6-6-6-6M12 19h8"/></svg></div>
-      <h3>Steam 反代已修复</h3>
-      <p>保留原项目的 Steam 社区反代，并补上 <b>header_up Host</b>，修复 Akamai 返回 400 导致的 bot 反复断连。</p>
+      <h3>Steam 反代</h3>
+      <p>保留原项目的 Steam 社区反代，并补上 <b>header_up Host</b> 以适配 Akamai 的 Host 校验，避免 bot 反复断连。</p>
     </div>
     <div class="feat rv">
       <div class="ico"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#34e3c4" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg></div>
@@ -536,7 +539,7 @@ docker compose up -d">复制</button>
   <div class="two" style="margin-top:34px">
     <div class="warn-card rv">
       <h3>⚠️ 别沿用老教程的 Caddyfile</h3>
-      <p>上游那份除了 Steam 反代，还带着三段 <code>github.com</code> / <code>github.io</code> / <code>raw.githubusercontent.com</code> 反代，里面是<b>硬编码的 GitHub IP</b>（早已失效，返回 502）。挂载的宿主文件会<b>完全盖住</b>镜像内置版本 —— 想改反代就改内置那份，或干脆删掉挂载。</p>
+      <p>老教程挂载的那份除了 Steam 反代，还带着三段 <code>github.com</code> / <code>github.io</code> / <code>raw.githubusercontent.com</code> 反代，本镜像不依赖它（版本走镜像层）。而且挂载的宿主文件会<b>完全盖住</b>镜像内置版本 —— 想改反代就改内置那份，或干脆不挂。</p>
     </div>
     <div class="warn-card rv">
       <h3>⚠️ 别挂载 /asf</h3>

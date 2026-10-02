@@ -8,7 +8,7 @@
 **介绍页：<https://dc1024.github.io/asfcn-autobuild/>** —— 源码在 [`site/`](site/)，**改完 push 即自动发布**到 `gh-pages` 分支（见 `.github/workflows/pages.yml`）。`site/` 目录本身就是网站根目录。
 
 名字里的 **autobuild** 就是本项目的核心：**不依赖容器内自更新，改由 CI 定时自动重建镜像。**
-衍生自 [`sffxzzp/ASFcn`](https://github.com/sffxzzp/ASFcn)，专治其「长时间不更新」的问题。
+衍生自 [`sffxzzp/ASFcn`](https://github.com/sffxzzp/ASFcn)，沿用它的 Steam 反代思路，把版本更新从容器内搬到了 CI。
 
 ## 一眼看完
 
@@ -39,8 +39,8 @@
 
 ## 相对上游 ASFcn 的改动
 
-1. **移除 `github.com` 反代**：上游 `entrypoint.sh` 把 `github.com` 指向本地 Caddy，再由 Caddyfile 用**硬编码 GitHub IP** 反代 —— 这些 IP 会失效（实测上游返回 502），导致 ASF 自更新/插件更新**永远失败**。本镜像靠**重建镜像**跟随版本，不再需要容器内自更新，故整段移除。
-2. **保留并修复 Steam 反代**：`(rev)` 段加入 `header_up Host {host}`，修复 Akamai 返回 400 导致 bot 反复断连。
+1. **不依赖容器内自更新**：本镜像靠**重建镜像**跟随版本，因此不需要在容器内维护一条对外的更新链路，`github.com` 反代整段移除，只保留 Steam 反代。
+2. **保留 Steam 反代并适配 Akamai**：`(rev)` 段加入 `header_up Host {host}`，满足 Akamai 的 Host 校验，避免 bot 反复断连。
 3. **CI 改造**：加 `schedule` 轮询 + 版本守卫 + 多架构 buildx，只推 ghcr；镜像名由仓库名推导，改名无需改流水线。
 
 ## 使用
@@ -71,7 +71,7 @@ docker compose pull && docker compose up -d
 
 > `plugins` 卷里**只放第三方插件**。官方插件（ItemsMatcher / MobileAuthenticator / SteamTokenDumper）镜像内自带，放重复副本会让 ASF 两处都扫、启动刷几百行重复报错。
 
-> ⚠️ **别沿用老教程里的「修复版 Caddyfile」**。上游那份除了 Steam 反代，还带着三段 `github.com` / `github.io` / `raw.githubusercontent.com` 反代，里面是**硬编码的 GitHub IP**（早已失效，返回 502）。本镜像内置的 Caddyfile 已无这些段落 —— 要改反代就改内置那份，或者干脆删掉 `Caddyfile` 挂载。挂载的宿主文件会**完全盖住**镜像内置版本，这也是「镜像明明是最新的、行为却还是旧的」最常见的成因。
+> ⚠️ **别沿用老教程里的「修复版 Caddyfile」**。老教程挂载的那份除了 Steam 反代，还带着三段 `github.com` / `github.io` / `raw.githubusercontent.com` 反代，本镜像不依赖它（版本走镜像层）。内置的 Caddyfile 已无这些段落 —— 要改反代就改内置那份，或者干脆删掉 `Caddyfile` 挂载。挂载的宿主文件会**完全盖住**镜像内置版本，这也是「镜像明明是最新的、行为却还是旧的」最常见的成因。
 
 默认 IPC 密码 `asfcnasfcn`，**改在 `config/ASF.json` 的 `IPCPassword`**（`IPC.config` 是 Kestrel 侧配置，改那里不生效）。容器启动时会自己体检这三件事：生效的 Caddyfile 缺 `header_up Host`、Caddyfile 里还有 github 反代、IPC 密码仍是默认值 —— 任一命中都会在日志里打 `[asfcn-autobuild][WARN]`。
 
