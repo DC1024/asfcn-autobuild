@@ -1,4 +1,4 @@
-name: build-and-push
+name: asfcn-autobuild
 
 # 触发策略：定时轮询 + 版本守卫（追得上 ASF 发布，又不空转）
 #  - push：仅在构建相关文件变化时（首次/改动即重建）
@@ -42,12 +42,14 @@ jobs:
           echo "asf=$TAG" >> "$GITHUB_OUTPUT"
           echo "Upstream ASF stable: $TAG"
 
-      - name: 计算镜像名（全小写）
+      - name: 计算镜像名（全小写，跟随仓库名，改名不用再改这里）
         id: img
         run: |
           set -eu
           OWNER=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')
-          echo "image=ghcr.io/${OWNER}/asfcn" >> "$GITHUB_OUTPUT"
+          REPO=$(echo '${{ github.event.repository.name }}' | tr '[:upper:]' '[:lower:]')
+          echo "image=ghcr.io/${OWNER}/${REPO}" >> "$GITHUB_OUTPUT"
+          echo "Image will be: ghcr.io/${OWNER}/${REPO}"
 
       - name: 版本守卫（决定是否构建）
         id: decide
@@ -92,7 +94,7 @@ jobs:
           labels: |
             org.opencontainers.image.version=${{ steps.ver.outputs.asf }}
             org.opencontainers.image.revision=${{ github.sha }}
-            org.opencontainers.image.source=https://github.com/DC1024/asfcn
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
 
       - name: 记录已构建版本 tag
         if: steps.decide.outputs.build == 'true'

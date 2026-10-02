@@ -1,10 +1,10 @@
-# ASFcn (self-maintained fork) — ArchiSteamFarm + Caddy(Steam 反代) 多架构镜像
-# 基础镜像每次构建都取官方最新稳定版 → 本镜像自动跟随上游 ASF 发布。
+# asfcn-autobuild — ArchiSteamFarm + Caddy(Steam 反代) 多架构镜像
+# 特色：基础镜像每次构建都取官方最新稳定版，且由 GitHub Actions 定时自动重建 → 上游一发新版就跟上。
 FROM ghcr.io/justarchinet/archisteamfarm:latest
 
-LABEL org.opencontainers.image.title="ASFcn (self-maintained)" \
-      org.opencontainers.image.description="ArchiSteamFarm + Caddy Steam-community reverse proxy for CN networks; multi-arch, auto-rebuilt on upstream releases" \
-      org.opencontainers.image.source="https://github.com/DC1024/asfcn" \
+LABEL org.opencontainers.image.title="asfcn-autobuild" \
+      org.opencontainers.image.description="ArchiSteamFarm + Caddy Steam-community reverse proxy for CN networks; multi-arch (amd64/arm64), automatically rebuilt on every upstream ASF stable release via GitHub Actions" \
+      org.opencontainers.image.source="https://github.com/DC1024/asfcn-autobuild" \
       org.opencontainers.image.licenses="Apache-2.0"
 
 ENV ASF_USER=asf
