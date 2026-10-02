@@ -94,8 +94,8 @@
     background:linear-gradient(100deg,var(--blue) 0%,var(--cyan) 48%,var(--violet) 100%);
     -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
   }
-  .sub{font-size:clamp(17px,2.3vw,23px);color:var(--muted);max-width:880px;margin:0 auto 16px}
-  .sub b{color:var(--fg);font-weight:600}
+  .sub{font-size:clamp(17px,2.3vw,23px);color:var(--muted);max-width:860px;margin:0 0 16px;text-align:left}
+  .sub b{color:var(--fg);font-weight:600;white-space:nowrap}
   .cta{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin:32px 0 0}
   .btn{
     display:inline-flex;align-items:center;gap:10px;padding:15px 26px;border-radius:12px;
@@ -271,9 +271,7 @@
   <div class="pill"><span class="live"></span>linux/amd64 · linux/arm64 · 稳定版通道</div>
   <h1>上游一发新版，<span class="g">它自己就重建</span></h1>
   <p class="sub">
-    <b>asfcn-autobuild</b> 是 ArchiSteamFarm + Caddy（Steam 社区反代）的多架构 Docker 镜像。
-    它不靠容器内自我更新，而是由 GitHub Actions 定时轮询上游稳定版，
-    <b>有新版就自动重建并推送</b>。
+    <b>asfcn-autobuild</b> 是 ArchiSteamFarm + Caddy（Steam 社区反代）的多架构 Docker 镜像。它不靠容器内自我更新，而是由 GitHub Actions 定时轮询上游稳定版，<b>有新版就自动重建并推送</b>。
   </p>
   <div class="cta">
     <a class="btn primary" href="#start">立刻用起来</a>
@@ -302,9 +300,7 @@
   <div class="eyebrow">design notes</div>
   <h2>更新交给构建，而不是运行时</h2>
   <p class="lead">
-    常见做法是让容器里的 ASF 自己更新，运行期再去取新版本。这个镜像换了个位置：
-    <b>把版本更新放到镜像构建阶段</b> —— 基础镜像每次构建都取官方最新稳定版，
-    容器只管跑，不操心升级。对应的取舍是下面四条。
+    常见做法是让容器里的 ASF 自己更新，运行期再去取新版本。这个镜像换了个位置：<b>把版本更新放到镜像构建阶段</b> —— 基础镜像每次构建都取官方最新稳定版，容器只管跑，不操心升级。对应的取舍是下面四条。
   </p>
   <div class="two">
     <div class="card rv">
@@ -579,8 +575,7 @@ docker compose up -d">复制</button>
   <div class="wrap">
     <p>
       <b>asfcn-autobuild</b> · Apache-2.0 生态 ·
-      衍生于 <a href="https://github.com/sffxzzp/ASFcn" target="_blank" rel="noopener">sffxzzp/ASFcn</a>，
-      基于 <a href="https://github.com/JustArchiNET/ArchiSteamFarm" target="_blank" rel="noopener">ArchiSteamFarm</a> 与 <a href="https://caddyserver.com/" target="_blank" rel="noopener">Caddy</a>。
+      衍生于 <a href="https://github.com/sffxzzp/ASFcn" target="_blank" rel="noopener">sffxzzp/ASFcn</a>，基于 <a href="https://github.com/JustArchiNET/ArchiSteamFarm" target="_blank" rel="noopener">ArchiSteamFarm</a> 与 <a href="https://caddyserver.com/" target="_blank" rel="noopener">Caddy</a>。
     </p>
     <p style="margin-top:10px;font-size:12px;color:#5f7391">
       镜像：<span style="font-family:var(--mono)">ghcr.io/dc1024/asfcn-autobuild:latest</span>
