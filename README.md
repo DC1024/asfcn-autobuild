@@ -5,7 +5,7 @@
 [![build](https://github.com/DC1024/asfcn-autobuild/actions/workflows/docker.yml/badge.svg)](https://github.com/DC1024/asfcn-autobuild/actions/workflows/docker.yml)
 [![ghcr](https://img.shields.io/badge/ghcr.io-dc1024%2Fasfcn--autobuild-2496ed)](https://ghcr.io/dc1024/asfcn-autobuild)
 
-**介绍页：<https://dc1024.github.io/asfcn-autobuild/>** —— 源码在 [`site/`](site/)，发布到 `gh-pages` 分支。
+**介绍页：<https://dc1024.github.io/asfcn-autobuild/>** —— 源码在 [`site/`](site/)，**改完 push 即自动发布**到 `gh-pages` 分支（见 `.github/workflows/pages.yml`）。`site/` 目录本身就是网站根目录。
 
 名字里的 **autobuild** 就是本项目的核心：**不依赖容器内自更新，改由 CI 定时自动重建镜像。**
 衍生自 [`sffxzzp/ASFcn`](https://github.com/sffxzzp/ASFcn)，专治其「长时间不更新」的问题。

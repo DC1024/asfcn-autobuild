@@ -1,0 +1,68 @@
+name: pages
+
+# site/ 一有改动就自动发布到 gh-pages 分支（GitHub Pages 从该分支取内容）。
+# 只依赖官方 actions/checkout，不引入第三方 action。
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'site/**'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write    # 需要推送到 gh-pages 分支
+
+concurrency:
+  group: pages-deploy
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: 发布 site/ 到 gh-pages
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -eu
+          [ -f site/index.html ] || { echo "::error::找不到 site/index.html"; exit 1; }
+
+          # 1) 把 site/ 的内容整理成待发布目录（site/ 即网站根目录）
+          BUILD=$(mktemp -d)
+          cp -a site/. "$BUILD"/
+          touch "$BUILD/.nojekyll"      # 关掉 Jekyll 处理，避免下划线开头的文件被吞
+
+          # 2) 算出内容 tree 哈希（只取决于文件名/内容/权限，与提交历史无关）
+          cd "$BUILD"
+          git init -q -b gh-pages
+          git add -A
+          NEW_TREE=$(git write-tree)
+
+          # 3) 取远端 gh-pages 的现有 tree
+          cd "$GITHUB_WORKSPACE"
+          OLD_TREE="none"
+          if git ls-remote --exit-code --heads origin gh-pages >/dev/null 2>&1; then
+            git fetch -q origin gh-pages
+            OLD_TREE=$(git rev-parse FETCH_HEAD^{tree})
+          fi
+          echo "gh-pages tree: old=${OLD_TREE} new=${NEW_TREE}"
+
+          # 4) 内容没变就不推，避免无意义的提交与 Pages 重建
+          if [ "$OLD_TREE" = "$NEW_TREE" ]; then
+            echo "site/ 内容与 gh-pages 一致，跳过发布。"
+            exit 0
+          fi
+
+          # 5) 提交并强制推送到 gh-pages
+          cd "$BUILD"
+          git -c user.name="github-actions[bot]" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -q -m "deploy: site/ @ ${GITHUB_SHA:0:7}"
+          git push -q --force \
+            "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+            HEAD:gh-pages
+          echo "已发布到 gh-pages：${{ github.server_url }}/${{ github.repository }}/tree/gh-pages"
