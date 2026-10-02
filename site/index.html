@@ -202,6 +202,17 @@
   .warn-card p{color:#c6b596;font-size:13.5px}
   .warn-card code{font-family:var(--mono);font-size:12.5px;background:rgba(255,180,84,.12);padding:2px 6px;border-radius:5px;color:var(--warn)}
 
+  /* 自检清单 */
+  .checks{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:30px}
+  .check{
+    display:flex;gap:11px;align-items:flex-start;padding:14px 16px;
+    border:1px solid var(--line);border-radius:11px;background:var(--panel);
+    font-size:13.5px;color:var(--muted);
+  }
+  .check .n{font-family:var(--mono);font-size:11px;color:var(--blue);padding-top:2px;min-width:18px}
+  .check b{color:var(--fg);font-weight:600}
+  .check code{font-family:var(--mono);font-size:12.5px;background:rgba(255,255,255,.06);padding:1.5px 6px;border-radius:5px;color:var(--cyan)}
+
   /* 链接 */
   .links{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
   .link{
@@ -226,7 +237,7 @@
     .stats{grid-template-columns:1fr 1fr}
   }
   @media(max-width:660px){
-    .two,.grid3,.links{grid-template-columns:1fr}
+    .two,.grid3,.links,.checks{grid-template-columns:1fr}
     .nav-links{display:none}
     header{padding:52px 0 12px}
     section{padding:56px 0}
@@ -243,6 +254,8 @@
       <a href="#why">为什么</a>
       <a href="#how">工作原理</a>
       <a href="#start">快速开始</a>
+      <a href="#move">换设备</a>
+      <a href="#check">自检</a>
       <a href="#notes">注意事项</a>
     </div>
     <a class="gh" href="https://github.com/DC1024/asfcn-autobuild" target="_blank" rel="noopener">
@@ -409,6 +422,77 @@
   </div>
 </section>
 
+<section class="wrap" id="move">
+  <div class="eyebrow">migrate</div>
+  <h2>换设备，只搬一个 config 目录</h2>
+  <p class="lead">
+    <code>logs/</code> 与 <code>plugins/</code> 里没有账号状态，用不着搬。但 config 里有个容易忽略的细节，它决定新机要不要重新登录。
+  </p>
+  <div class="two">
+    <div class="card good rv">
+      <h3><span class="taggood">要这样</span>bot.json + bot.db 一起搬</h3>
+      <p><code>bot.db</code> 里存着登录令牌。两个文件一起搬过去，ASF 在新机上<b>直接登录，不必重新验证</b>。</p>
+    </div>
+    <div class="card bad rv">
+      <h3><span class="tagbad">别这样</span>只搬 bot.json</h3>
+      <p>少了 <code>.db</code>，ASF 会重新走一遍登录，可能触发 Steam Guard / 邮件令牌，甚至要重新过 2FA。</p>
+    </div>
+  </div>
+  <div class="code rv" style="margin-top:24px">
+    <div class="code-top">
+      <span class="d"></span><span class="d"></span><span class="d"></span>
+      <span class="name">迁移：旧机打包 → 新机解包</span>
+      <button class="copy" data-copy="# 旧机：停容器，只打包 config
+docker compose stop
+tar -czf asf-config-$(date +%F).tar.gz -C /path/to/asf config
+
+# 新机：解包后直接起
+tar -xzf asf-config-*.tar.gz -C /path/to/asf
+docker compose up -d">复制</button>
+    </div>
+<pre><span class="c"># 旧机：停容器，只打包 config</span>
+<span class="k">docker</span> compose stop
+<span class="k">tar</span> -czf asf-config-<span class="s">$(date +%F)</span>.tar.gz -C /path/to/asf config
+
+<span class="c"># 新机：解包后直接起</span>
+<span class="k">tar</span> -xzf asf-config-*.tar.gz -C /path/to/asf
+<span class="k">docker</span> compose up -d</pre>
+  </div>
+  <p class="lead" style="margin:22px 0 0;font-size:14px">搬完在新机跑一次 <code>verify.sh</code>（下一节），确认 bot 已登录、反代通、没有重复插件报错。</p>
+</section>
+
+<section class="wrap" id="check">
+  <div class="eyebrow">self check</div>
+  <h2>一分钟自检</h2>
+  <p class="lead">
+    仓库自带 <code>verify.sh</code>。在装了 docker 的宿主机、于 compose 文件所在目录执行，一条命令跑完 9 项，给出 PASS / FAIL 与退出码。
+  </p>
+  <div class="code rv" style="max-width:560px">
+    <div class="code-top">
+      <span class="d"></span><span class="d"></span><span class="d"></span>
+      <span class="name">terminal</span>
+      <button class="copy" data-copy="bash verify.sh">复制</button>
+    </div>
+<pre><span class="k">bash</span> verify.sh
+<span class="c"># 需要 sudo 的机器：</span>
+<span class="k">DOCKER</span>=<span class="s">"sudo docker"</span> bash verify.sh</pre>
+  </div>
+  <div class="checks rv">
+    <div class="check"><span class="n">01</span><div>容器健康（running / healthy）</div></div>
+    <div class="check"><span class="n">02</span><div>镜像地址是新的，并报出本次启动的 ASF 版本</div></div>
+    <div class="check"><span class="n">03</span><div>有没有误挂 <code>/asf</code></div></div>
+    <div class="check"><span class="n">04</span><div>生效的 Caddyfile 是否健全：缺 <code>header_up Host</code>，或还留着 github 反代，都会报</div></div>
+    <div class="check"><span class="n">05</span><div>插件有没有被重复放置</div></div>
+    <div class="check"><span class="n">06</span><div>本次启动的 ERROR 数（按 boot 分口径）</div></div>
+    <div class="check"><span class="n">07</span><div>bot 是否登录并开始挂卡</div></div>
+    <div class="check"><span class="n">08</span><div>Steam 三个域名能否经反代连通</div></div>
+    <div class="check"><span class="n">09</span><div>IPC 接口能否鉴权</div></div>
+  </div>
+  <p class="lead" style="margin:22px 0 0;font-size:14px">
+    退出码 <code>0</code> = 全过，<code>1</code> = 有未通过项 —— 方便接进你自己的巡检脚本。顺带一个容易踩的点：ASF 的 IPC 用 <code>Authentication</code> 请求头鉴权（值就是 IPCPassword），<b>不是 HTTP Basic</b>，用 <code>curl -u</code> 会稳定拿到 401。
+  </p>
+</section>
+
 <section class="wrap">
   <div class="eyebrow">features</div>
   <h2>为多设备、弱网络环境做的取舍</h2>
@@ -448,8 +532,12 @@
 
 <section class="wrap" id="notes">
   <div class="eyebrow">notes</div>
-  <h2>三个容易踩的坑</h2>
-  <div class="grid3" style="margin-top:34px">
+  <h2>四个容易踩的坑</h2>
+  <div class="two" style="margin-top:34px">
+    <div class="warn-card rv">
+      <h3>⚠️ 别沿用老教程的 Caddyfile</h3>
+      <p>上游那份除了 Steam 反代，还带着三段 <code>github.com</code> / <code>github.io</code> / <code>raw.githubusercontent.com</code> 反代，里面是<b>硬编码的 GitHub IP</b>（早已失效，返回 502）。挂载的宿主文件会<b>完全盖住</b>镜像内置版本 —— 想改反代就改内置那份，或干脆删掉挂载。</p>
+    </div>
     <div class="warn-card rv">
       <h3>⚠️ 别挂载 /asf</h3>
       <p>宿主目录挂到 <code>/asf</code> 会盖住镜像里的新程序 —— 结果是「拉了新镜像也不更新」。旧配置里的这条挂载要删掉。</p>
